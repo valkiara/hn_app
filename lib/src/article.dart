@@ -1,119 +1,67 @@
-class Article {
-  final String text;
-  final String domain;
-  final String by;
-  final String age;
-  final int score;
-  final int commentsCount;
+import 'package:built_collection/built_collection.dart';
+import 'package:built_value/built_value.dart';
+import 'dart:convert' as json;
 
-  const Article(
-      {this.text,
-      this.domain,
-      this.by,
-      this.age,
-      this.score,
-      this.commentsCount});
+import 'package:built_value/serializer.dart';
+import 'serializers.dart';
+
+part 'article.g.dart';
+
+
+abstract class Article implements Built<Article, ArticleBuilder> {
+  static Serializer<Article> get serializer => _$articleSerializer;
+
+  int get id; //	The item's unique id.
+
+  @nullable
+  bool get deleted; //	true if the item is deleted.
+
+  String
+      get type; //	The type of item. One of "job", "story", "comment", "poll", or "pollopt".
+  String get by; //	The username of the item's author.
+  int get time; //	Creation date of the item, in Unix Time.
+
+  @nullable
+  String get text; //	The comment, story or poll text. HTML.
+
+  @nullable
+  bool get dead; //	true if the item is dead.
+
+  @nullable
+  int get parent; //	The comment's parent: either another comment or the relevant story.
+
+  @nullable
+  int get poll; //	The pollopt's associated poll.
+
+  BuiltList<int>
+      get kids; //	The ids of the item's comments, in ranked display order.
+
+  @nullable
+  String get url; //	The URL of the story.
+
+  @nullable
+  int get score; //	The story's score, or the votes for a pollopt.
+
+  @nullable
+  String get title; //	The title of the story, poll or job. HTML.
+
+  BuiltList<int> get parts; //	A list of related pollopts, in display order.
+
+  @nullable
+  int get descendants; //	In the case of stories or polls, the total comment count.
+
+  Article._();
+  factory Article([updates(ArticleBuilder b)]) = _$Article;
 }
 
-final articles = [
-  new Article(
-    text:
-        "Circular Shock Acoustic Waves in Ionosphere Triggered by Launch of Formosat-5",
-    domain: "wiley.com",
-    by: "zdw",
-    age: "3 hours",
-    score: 177,
-    commentsCount: 62,
-  ),
-  new Article(
-    text: "BMW says electric car mass production not viable until 2020",
-    domain: "reuters.com",
-    by: "Mononokay",
-    age: "2 hours",
-    score: 81,
-    commentsCount: 128,
-  ),
-  new Article(
-    text: "Evolution Is the New Deep Learning",
-    domain: "sentient.ai",
-    by: "jonbaer",
-    age: "4 hours",
-    score: 200,
-    commentsCount: 87,
-  ),
-  new Article(
-    text: "TCP Traceopoints hace arrived in Linux",
-    domain: "brndangregg.com",
-    by: "brendangregg",
-    age: "1 hour",
-    score: 35,
-    commentsCount: 0,
-  ),
-  new Article(
-    text:
-        "Section 230: A Key Legal Shield for Facebook, Google Is About to Change",
-    domain: "npr.org",
-    by: "Monokay",
-    age: "5 hours",
-    score: 156,
-    commentsCount: 66,
-  ),
-  new Article(
-    text: "A Visiting Star Jostled Our Solar System 70,000 Years Ago",
-    domain: "gizmodo.com",
-    by: "rbanffy",
-    age: "7 hours",
-    score: 122,
-    commentsCount: 43,
-  ),
-  new Article(
-    text:
-        "Number systems of the world, sorted by complexity of counting (2006)",
-    domain: "airnet.ne.jp",
-    by: "ColinWright",
-    age: "8 hours",
-    score: 196,
-    commentsCount: 90,
-  ),
-  new Article(
-    text: "MIT's new device can pull water from desert air",
-    domain: "techcrunch.com",
-    by: "evo_9",
-    age: "43 minutes",
-    score: 11,
-    commentsCount: 11,
-  ),
-  new Article(
-    text:
-        "TravisBuddy: Adds comments to failed pull requests, tells author what went wrong",
-    domain: "github.com",
-    by: "bluzzi",
-    age: "8 hours",
-    score: 37,
-    commentsCount: 26,
-  ),
-  new Article(
-    text: "Using Technical Debt in Your Favor",
-    domain: "gitconnected.com",
-    by: "treyhuffine",
-    age: "7 hours",
-    score: 140,
-    commentsCount: 123,
-  ),
-  new Article(
-    text: "Paint your app to life in milliseconds with Stateful Hot Reload. Use a rich set of fully-customizable widgets to build native interfaces in minutes.",
-    domain: "gitconnected.com",
-    by: "treyhuffine",
-    age: "7 hours",
-    score: 140,
-    commentsCount: 123,
-  ),
-     new Article(
-    text: "Quickly ship features with a focus on native end-user experiences. Layered architecture allows for full customization, which results in incredibly fast rendering and expressive and flexible designs.",
-    domain: "gitconnected.com",
-    by: "treyhuffine",
-    age: "7 hours",
-    score: 140,
-    commentsCount: 123,
-  ),
-    ];
+
+List<int> parseTopStores(String jsonStr) {
+  return List<int>.from(json.jsonDecode(jsonStr));
+}
+
+Article parseArticle(String jsonStr) {
+  final parsed = json.jsonDecode(jsonStr);
+  Article article =
+      standardSerializers.deserializeWith(Article.serializer, parsed);
+  return article;
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hn_app/src/article.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(MyApp());
@@ -31,7 +32,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Article> _aritcles = articles;
+  List<int> _ids = [23285249,23285466,23285845,23283880,23270289,23285593,23281542,23281634,23282207,23281278,23278405,23283527,23285664,23281564,23284987,23282209,23285608,23270269,23283675,23282754];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,16 +40,24 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await Future.delayed(Duration(seconds: 1));
-            setState(() {
-              _aritcles.removeAt(0);
-            });
-          },
-          child: ListView(
-            children: _aritcles.map(_buildItem).toList(),
-          ),
+        child: ListView(
+          children: _ids
+              .map(
+                (e) => FutureBuilder<Article>(
+                  future: _getArticle(e),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<Article> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done) {
+                      return _buildItem(snapshot.data);
+                    } else {
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -60,21 +69,19 @@ class _MyHomePageState extends State<MyHomePage> {
       padding: const EdgeInsets.all(16.0),
       child: ExpansionTile(
         title: Text(
-          e.text,
+          e.title,
           style: TextStyle(fontSize: 24),
         ),
         children: <Widget>[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-              Text('${e.commentsCount} comments'),
+              Text('by ${e.by}'),
               IconButton(
                 icon: Icon(Icons.launch),
                 onPressed: () async {
-                  final fakeUrl = 'http://${e.domain}';
-
-                  if (await canLaunch(fakeUrl)) {
-                    launch(fakeUrl);
+                  if (await canLaunch(e.url)) {
+                    launch(e.url);
                   }
                 },
               )
@@ -83,5 +90,16 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
     );
+  }
+
+  Future<Article> _getArticle(int id) async {
+    final url = 'https://hacker-news.firebaseio.com/v0/item/$id.json';
+
+    final res = await http.get(url);
+    if (res.statusCode == 200) {
+      return parseArticle(res.body);
+    }else{
+      return null;
+    }
   }
 }
