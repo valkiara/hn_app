@@ -44,6 +44,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  int _currentIndex = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
+        currentIndex: _currentIndex,
         items: [
           BottomNavigationBarItem(
               title: Text('Top Stories'), icon: Icon(Icons.trending_up)),
@@ -71,6 +72,9 @@ class _MyHomePageState extends State<MyHomePage> {
           } else {
             widget.bloc.storiesType.add(StoriesType.newStories);
           }
+          setState(() {
+            _currentIndex = index;
+          });
         },
       ),
     );
