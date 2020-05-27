@@ -8,31 +8,7 @@ import 'package:http/http.dart' as http;
 enum StoriesType { topStories, newStories }
 
 class HackerNewsBloc {
-  List<int> _newIds = [
-    23285249,
-    23285466,
-    23285845,
-    23283880,
-    23270289,
-    23285593,
-    23281542,
-    23281634,
-    23282207,
-    23281278,
-  ];
-  List<int> _topIds = [
-    23278405,
-    23283527,
-    23285664,
-    23281564,
-    23284987,
-    23282209,
-    23285608,
-    23270269,
-    23283675,
-    23282754
-  ];
-
+  HashMap<int, Article> _cachedArticles;
   final _articlesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
   Stream<UnmodifiableListView<Article>> get articles => _articlesSubject.stream;
 
@@ -45,15 +21,33 @@ class HackerNewsBloc {
   Sink<StoriesType> get storiesType => _storiesTypeController.sink;
 
   HackerNewsBloc() {
-    _getArticlesAndUpdate(_topIds);
+    _cachedArticles = HashMap<int, Article>();
+    _initializeArticles(StoriesType.topStories);
 
-    _storiesTypeController.stream.listen((storiesType) {
-      if (storiesType == StoriesType.newStories) {
-        _getArticlesAndUpdate(_newIds);
-      } else {
-        _getArticlesAndUpdate(_topIds);
-      }
+    _storiesTypeController.stream.listen((storiesType) async {
+      _getArticlesAndUpdate(await _getIds(storiesType));
     });
+  }
+
+  Future<void> _initializeArticles(StoriesType type) async {
+    _getArticlesAndUpdate(await _getIds(type));
+  }
+
+  void close() {
+    _storiesTypeController.close();
+  }
+
+  static const String _baseUrl = 'https://hacker-news.firebaseio.com/v0/';
+
+  Future<List<int>> _getIds(StoriesType type) async {
+    final partUrl = type == StoriesType.newStories ? 'new' : 'top';
+    final url = '$_baseUrl${partUrl}stories.json';
+    final res = await http.get(url);
+    if (res.statusCode != 200) {
+      throw HackerNewsApiError('Could not fetch $type stories');
+    }
+
+    return parseTopStores(res.body).take(10).toList();
   }
 
   Future<Null> _updateArticles(List<int> ids) async {
@@ -71,13 +65,20 @@ class HackerNewsBloc {
   }
 
   Future<Article> _getArticle(int id) async {
-    final url = 'https://hacker-news.firebaseio.com/v0/item/$id.json';
-
-    final res = await http.get(url);
-    if (res.statusCode == 200) {
-      return parseArticle(res.body);
-    } else {
-      return null;
+    if (!_cachedArticles.containsKey(id)) {
+      final url = '${_baseUrl}item/$id.json';
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        _cachedArticles[id] = parseArticle(res.body);
+      }else{
+        throw new HackerNewsApiError('Could not fetch story with ID: $id');
+      }
     }
+    return _cachedArticles[id];
   }
+}
+
+class HackerNewsApiError {
+  final String message;
+  HackerNewsApiError(this.message);
 }
