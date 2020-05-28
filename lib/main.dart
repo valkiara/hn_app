@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
         textTheme: Theme.of(context).textTheme.copyWith(
               caption: TextStyle(color: Colors.white54),
               subtitle1: TextStyle(
-                fontFamily: 'PressStart2P',
+                fontFamily: 'Garamond',
                 fontSize: 10.0,
               ),
             ),
@@ -63,9 +63,24 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        //title: Text(widget.title),
+        title: Text(widget.title),
         leading: LoadingInfo(widget.bloc.isLoading),
         elevation: 0.0,
+        actions: <Widget>[
+          Builder(
+            builder: (context) => IconButton(
+                icon: Icon(Icons.search),
+                onPressed: () async {
+                  final Article result = await showSearch(
+                    context: context,
+                    delegate: ArticleSearch(widget.bloc.articles),
+                  );
+                  if (result != null && await canLaunch(result.url)) {
+                      launch(result.url);
+                    }
+                }),
+          ),
+        ],
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
         stream: widget.bloc.articles,
@@ -163,6 +178,103 @@ class _LoadingInfoState extends State<LoadingInfo>
           ),
         );
       },
+    );
+  }
+}
+
+class ArticleSearch extends SearchDelegate<Article> {
+  final Stream<UnmodifiableListView<Article>> articles;
+
+  ArticleSearch(this.articles);
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+          icon: Icon(Icons.clear),
+          onPressed: () {
+            query = '';
+          }),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return StreamBuilder<UnmodifiableListView<Article>>(
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(
+            child: Text('No Data'),
+          );
+        }
+
+        var results = snapshot.data.where((element) =>
+            element.title.toLowerCase().contains(query.toLowerCase()));
+
+        return ListView(
+          children: results
+              .map(
+                (e) => ListTile(
+                  title: Text(
+                    e.title,
+                    style: TextStyle(fontSize: 16.0),
+                  ),
+                  leading: Icon(Icons.book),
+                  onTap: () async {
+                    if (await canLaunch(e.url)) {
+                      await launch(e.url);
+                      close(context, e);
+                    }
+                  },
+                ),
+              )
+              .toList(),
+        );
+      },
+      stream: articles,
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return StreamBuilder<UnmodifiableListView<Article>>(
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(
+            child: Text('No Data'),
+          );
+        }
+
+        var results = snapshot.data.where((element) =>
+            element.title.toLowerCase().contains(query.toLowerCase()));
+
+        return ListView(
+          children: results
+              .map(
+                (e) => ListTile(
+                  title: Text(
+                    e.title,
+                    style: TextStyle(fontSize: 16.0),
+                  ),
+                  onTap: () {
+                    close(context, e);
+                  },
+                ),
+              )
+              .toList(),
+        );
+      },
+      stream: articles,
     );
   }
 }
