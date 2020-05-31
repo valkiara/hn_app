@@ -1,9 +1,12 @@
 import 'dart:collection';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hn_app/src/article.dart';
 import 'package:hn_app/src/hn_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   final hnBloc = HackerNewsBloc();
@@ -75,9 +78,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     context: context,
                     delegate: ArticleSearch(widget.bloc.articles),
                   );
-                  if (result != null && await canLaunch(result.url)) {
-                      launch(result.url);
-                    }
+                  // if (result != null && await canLaunch(result.url)) {
+                  //   launch(result.url);
+                  // }
+                  if (result != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HackerNewsWebPage(
+                          url: result.url,
+                        ),
+                      ),
+                    );
+                  }
                 }),
           ),
         ],
@@ -121,19 +134,41 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            child: Column(
               children: <Widget>[
-                Text('${article.descendants} comments'),
-                SizedBox(width: 16.0),
-                IconButton(
-                  icon: Icon(Icons.launch),
-                  onPressed: () async {
-                    if (await canLaunch(article.url)) {
-                      launch(article.url);
-                    }
-                  },
-                )
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: <Widget>[
+                    Text('${article.descendants} comments'),
+                    SizedBox(width: 16.0),
+                    IconButton(
+                      icon: Icon(Icons.launch),
+                      onPressed: () async {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HackerNewsWebPage(
+                              url: article.url,
+                            ),
+                          ),
+                        );
+                        // if (await canLaunch(article.url)) {
+                        //   launch(article.url, forceWebView: false);
+                        // }
+                      },
+                    )
+                  ],
+                ),
+                Container(
+                  height: 200,
+                  child: WebView(
+                    javascriptMode: JavascriptMode.unrestricted,
+                    initialUrl: article.url,
+                    gestureRecognizers: Set()
+                      ..add(Factory<VerticalDragGestureRecognizer>(
+                          () => VerticalDragGestureRecognizer())),
+                  ),
+                ),
               ],
             ),
           ),
@@ -231,10 +266,18 @@ class ArticleSearch extends SearchDelegate<Article> {
                   ),
                   leading: Icon(Icons.book),
                   onTap: () async {
-                    if (await canLaunch(e.url)) {
-                      await launch(e.url);
-                      close(context, e);
-                    }
+                    // if (await canLaunch(e.url)) {
+                    //   await launch(e.url);
+                    //   close(context, e);
+                    // }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HackerNewsWebPage(
+                          url: e.url,
+                        ),
+                      ),
+                    );
                   },
                 ),
               )
@@ -275,6 +318,25 @@ class ArticleSearch extends SearchDelegate<Article> {
         );
       },
       stream: articles,
+    );
+  }
+}
+
+class HackerNewsWebPage extends StatelessWidget {
+  final String url;
+
+  HackerNewsWebPage({this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('HN APP'),
+      ),
+      body: WebView(
+        initialUrl: url,
+        javascriptMode: JavascriptMode.unrestricted,
+      ),
     );
   }
 }
