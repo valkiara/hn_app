@@ -13,8 +13,10 @@ class HackerNewsBloc {
   final _newArticlesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
   final _topArticlesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
 
-  Stream<UnmodifiableListView<Article>> get newArticles => _newArticlesSubject.stream;
-  Stream<UnmodifiableListView<Article>> get topArticles => _topArticlesSubject.stream;
+  Stream<UnmodifiableListView<Article>> get newArticles =>
+      _newArticlesSubject.stream;
+  Stream<UnmodifiableListView<Article>> get topArticles =>
+      _topArticlesSubject.stream;
 
   final _isLoadingSubject = BehaviorSubject<bool>();
   Stream<bool> get isLoading => _isLoadingSubject.stream;
@@ -29,13 +31,18 @@ class HackerNewsBloc {
     _initializeArticles(StoriesType.topStories);
 
     _storiesTypeController.stream.listen((storiesType) async {
-      _getArticlesAndUpdate(_newArticlesSubject, await _getIds(StoriesType.newStories));
-      _getArticlesAndUpdate(_topArticlesSubject, await _getIds(StoriesType.topStories));
-    }); 
+      _getArticlesAndUpdate(
+          _newArticlesSubject, await _getIds(StoriesType.newStories));
+      _getArticlesAndUpdate(
+          _topArticlesSubject, await _getIds(StoriesType.topStories));
+    });
   }
 
   Future<void> _initializeArticles(StoriesType type) async {
-    _getArticlesAndUpdate(await _getIds(type));
+    _getArticlesAndUpdate(
+        _newArticlesSubject, await _getIds(StoriesType.newStories));
+    _getArticlesAndUpdate(
+        _topArticlesSubject, await _getIds(StoriesType.topStories));
   }
 
   void close() {
@@ -61,7 +68,10 @@ class HackerNewsBloc {
     _articles = articles;
   }
 
-  _getArticlesAndUpdate(BehaviorSubject<UnmodifiableListView<Article>> subject, List<int> ids,) {
+  _getArticlesAndUpdate(
+    BehaviorSubject<UnmodifiableListView<Article>> subject,
+    List<int> ids,
+  ) {
     _isLoadingSubject.add(true);
     _updateArticles(ids)
         .then((_) => {subject.add(UnmodifiableListView(_articles))});
@@ -75,7 +85,7 @@ class HackerNewsBloc {
       final res = await http.get(url);
       if (res.statusCode == 200) {
         _cachedArticles[id] = parseArticle(res.body);
-      }else{
+      } else {
         throw new HackerNewsApiError('Could not fetch story with ID: $id');
       }
     }

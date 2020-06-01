@@ -75,7 +75,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   final Article result = await showSearch(
                     context: context,
-                    delegate: ArticleSearch(widget.bloc.articles),
+                    delegate: ArticleSearch(widget.bloc.newArticles),
                   );
                   // if (result != null && await canLaunch(result.url)) {
                   //   launch(result.url);
@@ -95,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
-        stream: widget.bloc.articles,
+        stream: widget.bloc.newArticles,
         initialData: UnmodifiableListView<Article>([]),
         builder: (context, snapshot) => ListView(
           children: snapshot.data.map(_buildItem).toList(),
