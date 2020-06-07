@@ -5,26 +5,28 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hn_app/src/article.dart';
 import 'package:hn_app/src/hn_bloc.dart';
+import 'package:hn_app/src/prefs_block.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   final hnBloc = HackerNewsBloc();
+  final prefsBloc = PrefsBloc();
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MyApp(
-      bloc: hnBloc,
+      hackerNewsBloc: hnBloc,
+      prefsBloc: prefsBloc,
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final HackerNewsBloc bloc;
+  final HackerNewsBloc hackerNewsBloc;
+  final PrefsBloc prefsBloc;
 
   static const primaryColor = Colors.white;
 
-  MyApp({
-    Key key,
-    this.bloc,
-  }) : super(key: key);
+  MyApp({Key key, this.hackerNewsBloc, this.prefsBloc}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +46,8 @@ class MyApp extends StatelessWidget {
       ),
       home: MyHomePage(
         title: 'Flutter Hacker News',
-        bloc: bloc,
+        hackerNewsBloc: hackerNewsBloc,
+        prefsBloc: prefsBloc,
       ),
     );
   }
@@ -52,9 +55,11 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   final String title;
-  final HackerNewsBloc bloc;
+  final HackerNewsBloc hackerNewsBloc;
+  final PrefsBloc prefsBloc;
 
-  MyHomePage({Key key, this.title, this.bloc}) : super(key: key);
+  MyHomePage({Key key, this.title, this.hackerNewsBloc, this.prefsBloc})
+      : super(key: key);
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -66,7 +71,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        leading: LoadingInfo(widget.bloc.isLoading),
+        leading: LoadingInfo(widget.hackerNewsBloc.isLoading),
         elevation: 0.0,
         actions: <Widget>[
           Builder(
@@ -75,7 +80,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   final Article result = await showSearch(
                     context: context,
-                    delegate: ArticleSearch(_currentIndex == 0 ? widget.bloc.newArticles : widget.bloc.topArticles),
+                    delegate: ArticleSearch(_currentIndex == 0
+                        ? widget.hackerNewsBloc.newArticles
+                        : widget.hackerNewsBloc.topArticles),
                   );
                   // if (result != null && await canLaunch(result.url)) {
                   //   launch(result.url);
@@ -95,7 +102,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
-        stream: _currentIndex == 0 ? widget.bloc.newArticles : widget.bloc.topArticles,
+        stream: _currentIndex == 0
+            ? widget.hackerNewsBloc.newArticles
+            : widget.hackerNewsBloc.topArticles,
         initialData: UnmodifiableListView<Article>([]),
         builder: (context, snapshot) => ListView(
           children: snapshot.data.map(_buildItem).toList(),
@@ -108,12 +117,16 @@ class _MyHomePageState extends State<MyHomePage> {
               title: Text('Top Stories'), icon: Icon(Icons.trending_up)),
           BottomNavigationBarItem(
               title: Text('New Stores'), icon: Icon(Icons.new_releases)),
+          BottomNavigationBarItem(
+              title: Text('Settings'), icon: Icon(Icons.settings)),
         ],
         onTap: (index) {
           if (index == 0) {
-            widget.bloc.storiesType.add(StoriesType.topStories);
+            widget.hackerNewsBloc.storiesType.add(StoriesType.topStories);
+          } else if (index == 1) {
+            widget.hackerNewsBloc.storiesType.add(StoriesType.newStories);
           } else {
-            widget.bloc.storiesType.add(StoriesType.newStories);
+            _showPrefsSheet(context, widget.prefsBloc);
           }
           setState(() {
             _currentIndex = index;
@@ -158,22 +171,52 @@ class _MyHomePageState extends State<MyHomePage> {
                     )
                   ],
                 ),
-                Container(
-                  height: 200,
-                  child: WebView(
-                    javascriptMode: JavascriptMode.unrestricted,
-                    initialUrl: article.url,
-                    gestureRecognizers: Set()
-                      ..add(Factory<VerticalDragGestureRecognizer>(
-                          () => VerticalDragGestureRecognizer())),
-                  ),
-                ),
+                StreamBuilder<PrefsState>(
+                    stream: widget.prefsBloc.currentPrefs,
+                    builder: (context, snapshot) {
+                      if (snapshot.data?.showWebView == true) {
+                        return Container(
+                          height: 200,
+                          child: WebView(
+                            javascriptMode: JavascriptMode.unrestricted,
+                            initialUrl: article.url,
+                            gestureRecognizers: Set()
+                              ..add(Factory<VerticalDragGestureRecognizer>(
+                                  () => VerticalDragGestureRecognizer())),
+                          ),
+                        );
+                      } else {
+                        return Container();
+                      }
+                    }),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _showPrefsSheet(BuildContext context, PrefsBloc prefsBloc) async {
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return Scaffold(
+            body: Center(
+              child: StreamBuilder<PrefsState>(
+                stream: prefsBloc.currentPrefs,
+                builder: (context, AsyncSnapshot<PrefsState> snapshot) {
+                  return snapshot.hasData
+                      ? Switch(
+                          value: snapshot.data.showWebView,
+                          onChanged: (value) => prefsBloc.showWebViewPref.add(value),
+                        )
+                      : Text('Nothing');
+                },
+              ),
+            ),
+          );
+        });
   }
 }
 
