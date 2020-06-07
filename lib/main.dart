@@ -75,7 +75,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   final Article result = await showSearch(
                     context: context,
-                    delegate: ArticleSearch(widget.bloc.newArticles),
+                    delegate: ArticleSearch(_currentIndex == 0 ? widget.bloc.newArticles : widget.bloc.topArticles),
                   );
                   // if (result != null && await canLaunch(result.url)) {
                   //   launch(result.url);
@@ -95,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
-        stream: widget.bloc.newArticles,
+        stream: _currentIndex == 0 ? widget.bloc.newArticles : widget.bloc.topArticles,
         initialData: UnmodifiableListView<Article>([]),
         builder: (context, snapshot) => ListView(
           children: snapshot.data.map(_buildItem).toList(),
@@ -125,7 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _buildItem(Article article) {
     return Padding(
-      key: Key(article.title),
+      key: PageStorageKey(article.title),
       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 12.0),
       child: ExpansionTile(
         title:
