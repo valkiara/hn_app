@@ -17,7 +17,7 @@ class PrefsState {
 
 class PrefsBloc {
   final _currentPrefs = BehaviorSubject<PrefsState>.seeded(
-    PrefsState(true),
+    PrefsState(false),
   );
 
   final _showWebViewPref = StreamController<bool>();
@@ -40,7 +40,7 @@ class PrefsBloc {
 
   Future<void> _loadSharedPrefs() async {
     final sharedPrefs = await SharedPreferences.getInstance();
-    final showWebView = sharedPrefs.getBool('showWebView') ?? true;
+    final showWebView = sharedPrefs.getBool('showWebView') ?? false;
     _currentPrefs.add(PrefsState(showWebView));
   }
 
