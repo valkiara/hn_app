@@ -6,11 +6,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hn_app/src/article.dart';
 import 'package:hn_app/src/hn_bloc.dart';
 import 'package:hn_app/src/prefs_block.dart';
+import 'package:hn_app/src/widgets/search.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
-  final hnBloc = HackerNewsBloc();
-  final prefsBloc = PrefsBloc();
+  var hnBloc = HackerNewsBloc();
+  var prefsBloc = PrefsBloc();
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MyApp(
@@ -45,7 +46,6 @@ class MyApp extends StatelessWidget {
             ),
       ),
       home: MyHomePage(
-        title: 'Flutter Hacker News',
         hackerNewsBloc: hackerNewsBloc,
         prefsBloc: prefsBloc,
       ),
@@ -54,12 +54,10 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  final String title;
   final HackerNewsBloc hackerNewsBloc;
   final PrefsBloc prefsBloc;
 
-  MyHomePage({Key key, this.title, this.hackerNewsBloc, this.prefsBloc})
-      : super(key: key);
+  MyHomePage({Key key, this.hackerNewsBloc, this.prefsBloc}) : super(key: key);
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -70,7 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text('Flutter Hacker News'),
         leading: LoadingInfo(widget.hackerNewsBloc.isLoading),
         elevation: 0.0,
         actions: <Widget>[
@@ -107,7 +105,8 @@ class _MyHomePageState extends State<MyHomePage> {
             : widget.hackerNewsBloc.topArticles,
         initialData: UnmodifiableListView<Article>([]),
         builder: (context, snapshot) => ListView(
-          children: snapshot.data.map(_buildItem).toList(),
+          key: PageStorageKey(_currentIndex),
+          children: snapshot.data.map((a) => _Item(article: a, prefsBloc: widget.prefsBloc,)).toList(),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -136,7 +135,42 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildItem(Article article) {
+  void _showPrefsSheet(BuildContext context, PrefsBloc prefsBloc) async {
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return Scaffold(
+            body: Center(
+              child: StreamBuilder<PrefsState>(
+                stream: prefsBloc.currentPrefs,
+                builder: (context, AsyncSnapshot<PrefsState> snapshot) {
+                  return snapshot.hasData
+                      ? Switch(
+                          value: snapshot.data.showWebView,
+                          onChanged: (value) =>
+                              prefsBloc.showWebViewPref.add(value),
+                        )
+                      : Text('Nothing');
+                },
+              ),
+            ),
+          );
+        });
+  }
+}
+
+class _Item extends StatelessWidget {
+  const _Item({
+    Key key,
+    @required this.article,
+    @required this.prefsBloc
+  }) : super(key: key);
+
+  final Article article;
+  final PrefsBloc prefsBloc;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       key: PageStorageKey(article.title),
       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 12.0),
@@ -172,7 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ],
                 ),
                 StreamBuilder<PrefsState>(
-                    stream: widget.prefsBloc.currentPrefs,
+                    stream: prefsBloc.currentPrefs,
                     builder: (context, snapshot) {
                       if (snapshot.data?.showWebView == true) {
                         return Container(
@@ -195,28 +229,6 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
     );
-  }
-
-  void _showPrefsSheet(BuildContext context, PrefsBloc prefsBloc) async {
-    showModalBottomSheet(
-        context: context,
-        builder: (context) {
-          return Scaffold(
-            body: Center(
-              child: StreamBuilder<PrefsState>(
-                stream: prefsBloc.currentPrefs,
-                builder: (context, AsyncSnapshot<PrefsState> snapshot) {
-                  return snapshot.hasData
-                      ? Switch(
-                          value: snapshot.data.showWebView,
-                          onChanged: (value) => prefsBloc.showWebViewPref.add(value),
-                        )
-                      : Text('Nothing');
-                },
-              ),
-            ),
-          );
-        });
   }
 }
 
@@ -255,111 +267,6 @@ class _LoadingInfoState extends State<LoadingInfo>
           ),
         );
       },
-    );
-  }
-}
-
-class ArticleSearch extends SearchDelegate<Article> {
-  final Stream<UnmodifiableListView<Article>> articles;
-
-  ArticleSearch(this.articles);
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [
-      IconButton(
-          icon: Icon(Icons.clear),
-          onPressed: () {
-            query = '';
-          }),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      icon: Icon(Icons.arrow_back),
-      onPressed: () {
-        close(context, null);
-      },
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    return StreamBuilder<UnmodifiableListView<Article>>(
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(
-            child: Text('No Data'),
-          );
-        }
-
-        var results = snapshot.data.where((element) =>
-            element.title.toLowerCase().contains(query.toLowerCase()));
-
-        return ListView(
-          children: results
-              .map(
-                (e) => ListTile(
-                  title: Text(
-                    e.title,
-                    style: TextStyle(fontSize: 16.0),
-                  ),
-                  leading: Icon(Icons.book),
-                  onTap: () async {
-                    // if (await canLaunch(e.url)) {
-                    //   await launch(e.url);
-                    //   close(context, e);
-                    // }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HackerNewsWebPage(
-                          url: e.url,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              )
-              .toList(),
-        );
-      },
-      stream: articles,
-    );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    return StreamBuilder<UnmodifiableListView<Article>>(
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(
-            child: Text('No Data'),
-          );
-        }
-
-        var results = snapshot.data.where((element) =>
-            element.title.toLowerCase().contains(query.toLowerCase()));
-
-        return ListView(
-          children: results
-              .map(
-                (e) => ListTile(
-                  title: Text(
-                    e.title,
-                    style: TextStyle(fontSize: 16.0),
-                  ),
-                  onTap: () {
-                    close(context, e);
-                  },
-                ),
-              )
-              .toList(),
-        );
-      },
-      stream: articles,
     );
   }
 }

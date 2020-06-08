@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 enum StoriesType { topStories, newStories }
 
 class HackerNewsBloc {
-  HashMap<int, Article> _cachedArticles;
+  Map<int, Article> _cachedArticles;
 
   final _newArticlesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
   final _topArticlesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
@@ -26,8 +26,7 @@ class HackerNewsBloc {
   final _storiesTypeController = StreamController<StoriesType>();
   Sink<StoriesType> get storiesType => _storiesTypeController.sink;
 
-  HackerNewsBloc() {
-    _cachedArticles = HashMap<int, Article>();
+  HackerNewsBloc() : _cachedArticles = HashMap<int, Article>() {
     _initializeArticles(StoriesType.topStories);
 
     _storiesTypeController.stream.listen((storiesType) async {
@@ -47,6 +46,8 @@ class HackerNewsBloc {
 
   void close() {
     _storiesTypeController.close();
+    _newArticlesSubject.close();
+    _topArticlesSubject.close();
   }
 
   static const String _baseUrl = 'https://hacker-news.firebaseio.com/v0/';
@@ -64,8 +65,9 @@ class HackerNewsBloc {
 
   Future<Null> _updateArticles(List<int> ids) async {
     final futureArticles = ids.map((id) => _getArticle(id));
-    final articles = await Future.wait(futureArticles);
-    _articles = articles;
+    final all = await Future.wait(futureArticles);
+    final filtered = all.where((element) => element.title != null).toList();
+    _articles = filtered;
   }
 
   _getArticlesAndUpdate(
