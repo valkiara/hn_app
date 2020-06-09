@@ -1,28 +1,61 @@
-// // This is a basic Flutter widget test.
-// //
-// // To perform an interaction with a widget in your test, use the WidgetTester
-// // utility that Flutter provides. For example, you can send tap and scroll
-// // gestures. You can also use WidgetTester to find child widgets in the widget
-// // tree, read text, and verify that the values of widget properties are correct.
+// This is a basic Flutter widget test.
+// To perform an interaction with a widget in your test, use the WidgetTester utility that Flutter
+// provides. For example, you can send tap and scroll gestures. You can also use WidgetTester to
+// find child widgets in the widget tree, read text, and verify that the values of widget properties
+// are correct.
+// import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hn_app/main.dart';
+import 'package:hn_app/src/widgets/headline.dart';
+// import 'package:hn_app/src/widgets/headline.dart';
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_test/flutter_test.dart';
+void main() {
+  testWidgets('headline animates and changes text correctly',
+      (WidgetTester tester) async {
+    String text = "Foo";
+    int index = 0;
+    Key buttonKey = GlobalKey();
+    Key headlineKey = GlobalKey();
 
-// import 'package:hn_app/main.dart';
+    Widget widget = StatefulBuilder(
+      builder: (BuildContext context, void Function(void Function()) setState) {
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Column(
+            children: <Widget>[
+              Headline(
+                key: headlineKey,
+                text: text,
+                index: index,
+              ),
+              FlatButton(
+                onPressed: () {
+                  setState(() {
+                    text = 'Bar';
+                    index = 1;
+                  });
+                },
+                child: Text("Tap"),
+                key: buttonKey,
+              )
+            ],
+          ),
+        );
+      },
+    );
+    await tester.pumpWidget(
+      widget,
+    );
 
-// void main() {
-//   // testWidgets('Clicking title opens it', (WidgetTester tester) async {
-//   //   // Build our app and trigger a frame.
-//   //   await tester.pumpWidget(MyApp());
+    expect(find.text('Foo'), findsOneWidget);
 
-//   //   // Verify that our counter starts at 0.
-//   //   expect(find.byIcon(Icons.launch), findsNothing);
+    await tester.pump();
 
-//   //   // Tap
-//   //   await tester.tap(find.byType(ExpansionTile).first);
-//   //   await tester.pump();
+    await tester.tap(find.byKey(buttonKey));
 
-//   //   // Verify
-//   //   expect(find.byIcon(Icons.launch), findsOneWidget);
-//   // });
-// }
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bar'), findsOneWidget);
+  });
+}

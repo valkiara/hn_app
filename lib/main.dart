@@ -12,7 +12,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   var hnBloc = HackerNewsBloc();
-  var prefsBloc = PrefsBloc();
+  PrefsBloc prefsBloc; //= PrefsBloc();
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MyApp(
@@ -33,7 +33,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       theme: ThemeData(
         primaryColor: primaryColor,
         scaffoldBackgroundColor: primaryColor,
@@ -69,7 +68,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Headline(text: _currentIndex == 0 ? 'Top Stories' : 'New Stories', index: _currentIndex,),
+        title: Center(
+          child: Headline(
+            text: _currentIndex == 0 ? 'Top Stories' : 'New Stories',
+            index: _currentIndex,
+          ),
+        ),
         leading: LoadingInfo(widget.hackerNewsBloc.isLoading),
         elevation: 0.0,
         actions: <Widget>[
@@ -102,12 +106,17 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
         stream: _currentIndex == 0
-            ? widget.hackerNewsBloc.newArticles
-            : widget.hackerNewsBloc.topArticles,
+            ? widget.hackerNewsBloc.topArticles
+            : widget.hackerNewsBloc.newArticles,
         initialData: UnmodifiableListView<Article>([]),
         builder: (context, snapshot) => ListView(
           key: PageStorageKey(_currentIndex),
-          children: snapshot.data.map((a) => _Item(article: a, prefsBloc: widget.prefsBloc,)).toList(),
+          children: snapshot.data
+              .map((a) => _Item(
+                    article: a,
+                    prefsBloc: widget.prefsBloc,
+                  ))
+              .toList(),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -131,15 +140,11 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
-
 }
 
 class _Item extends StatelessWidget {
-  const _Item({
-    Key key,
-    @required this.article,
-    @required this.prefsBloc
-  }) : super(key: key);
+  const _Item({Key key, @required this.article, @required this.prefsBloc})
+      : super(key: key);
 
   final Article article;
   final PrefsBloc prefsBloc;
@@ -160,7 +165,16 @@ class _Item extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
-                    Text('${article.descendants} comments'),
+                    FlatButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (BuildContext context) =>
+                              HackerNewsCommentPage(article.id),
+                        ),
+                      ),
+                      child: Text('${article.descendants} comments'),
+                    ),
                     SizedBox(width: 16.0),
                     IconButton(
                       icon: Icon(Icons.launch),
@@ -180,28 +194,39 @@ class _Item extends StatelessWidget {
                     )
                   ],
                 ),
-                StreamBuilder<PrefsState>(
-                    stream: prefsBloc.currentPrefs,
-                    builder: (context, snapshot) {
-                      if (snapshot.data?.showWebView == true) {
-                        return Container(
-                          height: 200,
-                          child: WebView(
-                            javascriptMode: JavascriptMode.unrestricted,
-                            initialUrl: article.url,
-                            gestureRecognizers: Set()
-                              ..add(Factory<VerticalDragGestureRecognizer>(
-                                  () => VerticalDragGestureRecognizer())),
-                          ),
-                        );
-                      } else {
-                        return Container();
-                      }
-                    }),
+                Container(
+                  height: 200,
+                  child: WebView(
+                    javascriptMode: JavascriptMode.unrestricted,
+                    initialUrl: article.url,
+                    gestureRecognizers: Set()
+                      ..add(Factory<VerticalDragGestureRecognizer>(
+                          () => VerticalDragGestureRecognizer())),
+                  ),
+                )
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class HackerNewsCommentPage extends StatelessWidget {
+  final int id;
+
+  HackerNewsCommentPage(this.id);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Comments'),
+      ),
+      body: WebView(
+        initialUrl: 'https://news.ycombinator.com/item?id=$id',
+        javascriptMode: JavascriptMode.unrestricted,
       ),
     );
   }
